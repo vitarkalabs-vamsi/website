@@ -1,0 +1,27 @@
+{
+  "name": "vitarka-files-6",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Setup for ARC-Node blueprint generator and Vitarka Labs website component",
+  "main": "generate_blueprint.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "generate": "node generate_blueprint.js \"./ARC_Node_v2_Technical_Blueprint.generated.docx\"",
+    "validate:jsx": "node validate-jsx.js"
+  },
+  "dependencies": {
+    "docx": "^9.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "lucide-react": "^0.528.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@babel/preset-env": "^7.24.0",
+    "@babel/preset-react": "^7.24.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "vite": "^5.4.0"
+  }
+}

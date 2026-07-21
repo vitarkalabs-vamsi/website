@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Vitarka Labs — high-contrast logo: black background, white mark -->
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="460" viewBox="0 0 680 460" role="img" aria-label="Vitarka Labs logo">
+  <rect width="100%" height="100%" fill="#000000" />
+  <g transform="translate(340,230)">
+    <!-- Outer ring -->
+    <circle r="120" fill="none" stroke="#FFFFFF" stroke-width="6" opacity="0.95" />
+    <!-- Dashed inner ring -->
+    <circle r="86" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-dasharray="6 6" opacity="0.9" />
+    <!-- Four accent arcs (cardinal) -->
+    <g stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" fill="none" opacity="0.95">
+      <path d="M-120 0 A120 120 0 0 1 -0.1 -120" />
+      <path d="M0 -120 A120 120 0 0 1 120 0" />
+      <path d="M120 0 A120 120 0 0 1 0.1 120" />
+      <path d="M0 120 A120 120 0 0 1 -120 0" />
+    </g>
+    <!-- Central core -->
+    <circle r="36" fill="#FFFFFF" opacity="1" />
+    <!-- Connector lines to four nodes -->
+    <g stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" opacity="0.95">
+      <line x1="0" y1="-36" x2="0" y2="-110" />
+      <line x1="36" y1="0" x2="110" y2="0" />
+      <line x1="0" y1="36" x2="0" y2="110" />
+      <line x1="-36" y1="0" x2="-110" y2="0" />
+    </g>
+    <!-- Node markers -->
+    <g fill="#FFFFFF">
+      <circle cx="0" cy="-120" r="8" />
+      <circle cx="120" cy="0" r="8" />
+      <circle cx="0" cy="120" r="8" />
+      <circle cx="-120" cy="0" r="8" />
+    </g>
+    <!-- Subtle ticks around outer ring -->
+    <g stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" opacity="0.7">
+      <!-- 16 ticks -->
+      <g>
+        <g id="ticks">
+          <line x1="0" y1="-140" x2="0" y2="-132" />
+        </g>
+      </g>
+      <g>
+        <!-- replicate ticks by rotation -->
+        <use href="#ticks" transform="rotate(22.5)" />
+        <use href="#ticks" transform="rotate(45)" />
+        <use href="#ticks" transform="rotate(67.5)" />
+        <use href="#ticks" transform="rotate(90)" />
+        <use href="#ticks" transform="rotate(112.5)" />
+        <use href="#ticks" transform="rotate(135)" />
+        <use href="#ticks" transform="rotate(157.5)" />
+        <use href="#ticks" transform="rotate(180)" />
+        <use href="#ticks" transform="rotate(202.5)" />
+        <use href="#ticks" transform="rotate(225)" />
+        <use href="#ticks" transform="rotate(247.5)" />
+        <use href="#ticks" transform="rotate(270)" />
+        <use href="#ticks" transform="rotate(292.5)" />
+        <use href="#ticks" transform="rotate(315)" />
+        <use href="#ticks" transform="rotate(337.5)" />
+      </g>
+    </g>
+  </g>
+  <!-- Optional wordmark (white) to the right for visibility -->
+  <g transform="translate(420,230)" fill="#FFFFFF" font-family="Inter, Arial, Helvetica, sans-serif" font-weight="700" font-size="28">
+    <text x="0" y="8">VITARKA</text>
+    <text x="0" y="40" font-weight="500" font-size="18">LABS</text>
+  </g>
+</svg>

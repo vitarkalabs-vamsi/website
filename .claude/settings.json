@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\vamsi\\\\Downloads\\\\files \\(6\\)\\\\backend\")",
+      "PowerShell(New-Item -ItemType Directory -Force \"c:\\\\Users\\\\vamsi\\\\Downloads\\\\files \\(6\\)\\\\backend\\\\routes\")",
+      "Bash(npm run *)",
+      "Bash(node -e \"require\\('./server'\\); setTimeout\\(\\(\\) => process.exit\\(0\\), 500\\)\")"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\vamsi\\Downloads\\files (6)"
+    ]
+  }
+}
