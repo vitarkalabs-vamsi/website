@@ -14,7 +14,7 @@ const validate = [
   body("name").trim().notEmpty().withMessage("Name is required").isLength({ max: 120 }),
   body("email").isEmail().normalizeEmail().withMessage("Valid email is required"),
   body("message").trim().notEmpty().withMessage("Message is required").isLength({ min: 10, max: 2000 }),
-  body("type").optional().isIn(["software", "ai", "embedded", "iot", "poc", "other"]),
+  body("type").optional().isIn(["software", "ai", "embedded", "iot", "arcnode", "organoid", "other"]),
 ];
 
 router.post("/", contactLimiter, validate, async (req, res) => {
