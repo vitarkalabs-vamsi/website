@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Download } from 'lucide-react';
-import { API_BASE, ArchLayerRow } from '../lib/theme.jsx';
+import { ArchLayerRow } from '../lib/theme.jsx';
 import { useContactModal } from '../components/Layout.jsx';
 
 /* ─── DATA ──────────────────────────────────────────────────────────────────── */
@@ -84,34 +84,9 @@ const bom = [
   { component: 'Custom 3D-Printed Housing',  function: '4-Mic precision geometry mount',        cost: '₹ 250' },
 ];
 
-/* ─── DOWNLOAD HELPER ───────────────────────────────────────────────────────── */
-
-async function downloadBlueprint(setStatus) {
-  setStatus('loading');
-  try {
-    const res = await fetch(`${API_BASE}/api/download/arc-node-blueprint`);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || 'Download failed');
-    }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'ARC_Node_v2_Technical_Blueprint.docx';
-    a.click();
-    URL.revokeObjectURL(url);
-    setStatus('done');
-  } catch (err) {
-    console.error(err);
-    setStatus('error');
-  }
-}
-
 /* ─── PAGE ──────────────────────────────────────────────────────────────────── */
 
 export default function ArcNodePage() {
-  const [dlStatus, setDlStatus] = useState('idle');
   const openContact = useContactModal();
 
   return (
@@ -256,14 +231,14 @@ export default function ArcNodePage() {
             <button className="btn btn-ghost-dark btn-lg" onClick={openContact}>
               Discuss a pilot
             </button>
-            <button
+            <a
               className="btn btn-phosphor btn-lg"
-              onClick={() => downloadBlueprint(setDlStatus)}
-              disabled={dlStatus === 'loading'}
+              href="/ARC_Node_v2_Technical_Blueprint.docx"
+              download="ARC_Node_v2_Technical_Blueprint.docx"
             >
               <Download size={15} />
-              {dlStatus === 'loading' ? 'Downloading…' : dlStatus === 'done' ? 'Downloaded ✓' : dlStatus === 'error' ? 'Try again' : 'Download ARC-Node DOCX'}
-            </button>
+              Download ARC-Node DOCX
+            </a>
           </div>
         </div>
 

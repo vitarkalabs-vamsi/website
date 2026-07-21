@@ -6,5 +6,9 @@ module.exports = defineConfig({
   server: {
     port: 4173,
     host: '0.0.0.0',
+    proxy: {
+      '/api': 'http://localhost:8787',
+      '/health': 'http://localhost:8787',
+    },
   }
 });

@@ -1,6 +1,9 @@
 import React from 'react';
 
-export const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001';
+// Empty string = same-origin relative requests. The Worker serves the API
+// and the static site from the same domain, so this works in production
+// as-is; in dev, Vite's server.proxy forwards /api to `wrangler dev`.
+export const API_BASE = import.meta.env.VITE_API_BASE || '';
 
 /* ───────────────────────────────────────────────────────────────────────────
    VITARKA LABS — Editorial product design aesthetic

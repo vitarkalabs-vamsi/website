@@ -8,11 +8,14 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "generate": "node generate_blueprint.js \"./ARC_Node_v2_Technical_Blueprint.generated.docx\"",
-    "validate:jsx": "node validate-jsx.js"
+    "generate": "node generate_blueprint.js \"./public/ARC_Node_v2_Technical_Blueprint.docx\"",
+    "validate:jsx": "node validate-jsx.js",
+    "worker:dev": "wrangler dev",
+    "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
     "docx": "^9.0.0",
+    "hono": "^4.6.0",
     "lucide-react": "^0.528.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -23,6 +26,7 @@
     "@babel/preset-env": "^7.24.0",
     "@babel/preset-react": "^7.24.0",
     "@vitejs/plugin-react": "^4.3.0",
-    "vite": "^5.4.0"
+    "vite": "^5.4.0",
+    "wrangler": "^4.113.0"
   }
 }
