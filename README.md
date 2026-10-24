@@ -1,79 +1,60 @@
-# Vitarka Labs Website
+# Vitarka Fabric website
 
-A multi-page React + Vite site for Vitarka Labs, deployed as a single Cloudflare Worker that serves both
-the static frontend and the API — no separate backend hosting needed.
+Marketing site and interactive console for **Vitarka Fabric**, one runtime that connects NPUs, TPUs,
+quantum processors (QPUs) and organoid processors (OPUs), and lets a running job switch between them.
 
-- `src/pages/HomePage.jsx` — company overview: about, practice areas, method, and a Products section linking to each POC.
-- `src/pages/ArcNodePage.jsx` — the ARC-Node product page (edge acoustic/RF sensing POC).
-- `src/pages/OrganoidIntelligencePage.jsx` — the Organoid Intelligence product page (applied research POC).
-- `src/components/Layout.jsx` — shared nav, footer, and contact modal used across all pages.
-- `src/lib/theme.jsx` — shared design system: global CSS, palette, and reusable marks/components.
-- `worker/index.js` — Cloudflare Worker (Hono) handling `/api/contact` and `/health`; everything else falls
-  through to the built static site via the `ASSETS` binding.
-- `generate_blueprint.js` — Node script that generates the ARC-Node `.docx` blueprint (output lives in `public/`
-  so it's served as a plain static file — see the download link on the ARC-Node page).
+Live: https://website.vitarkalabs.workers.dev
 
-## Setup
+React + Vite frontend, served together with a small API by a single Cloudflare Worker (Hono).
+
+## Structure
+
+| Path | What it is |
+|------|------------|
+| `src/pages/HomePage.jsx` | Landing page: hero, live console, chip datasheet, call to action |
+| `src/pages/ConsolePage.jsx` | Full-page console with things to try |
+| `src/pages/PlatformPage.jsx` | Architecture, live-handoff steps, routing weights, limits |
+| `src/components/FabricConsole.jsx` | The rack-style console UI |
+| `src/lib/fabric.js` | Client-side simulation of the runtime: chips, workloads, routing, checkpoint and handoff |
+| `src/components/Layout.jsx` | Header, footer, contact dialog |
+| `src/lib/theme.css` | Design system and all styles |
+| `worker/index.js` | Worker: `/api/contact`, `/health`, security headers; everything else falls through to static assets |
+| `public/_headers` | Security and cache headers for static assets |
+
+The console is a simulation. No real hardware is contacted, and the site says so.
+
+## Develop
 
 ```bash
 npm install
+npm run worker:dev   # Worker + API on http://localhost:8787
+npm run dev          # Vite on http://localhost:4173, proxying /api and /health to the Worker
 ```
 
-## Run the website locally
-
-Two dev servers, both required for the API to work locally:
+## Deploy
 
 ```bash
-npm run worker:dev   # runs the Worker (API) on http://localhost:8787
-npm run dev           # runs Vite on http://localhost:4173, proxying /api and /health to the Worker
+npm run deploy       # vite build, then wrangler deploy
 ```
 
-Open `http://localhost:4173`.
+## Contact form
 
-## Build the website
+`POST /api/contact` accepts JSON `{ name, email, org?, message }`. It rejects cross-origin requests,
+non-JSON bodies and bodies over 8 KB, rate-limits to 5 submissions per IP per minute, silently drops bots
+that fill the hidden honeypot field, and logs no personal data.
+
+To have submissions emailed, set these Worker secrets (sent through [Resend](https://resend.com)):
 
 ```bash
-npm run build
+npx wrangler secret put RESEND_API_KEY
+npx wrangler secret put CONTACT_TO_EMAIL
+npx wrangler secret put CONTACT_FROM_EMAIL   # optional, a verified sender
 ```
 
-Preview the production build with:
+Without them, submissions are accepted but only a metadata line is logged.
 
-```bash
-npm run preview
-```
+## Security
 
-## Validate JSX syntax
-
-```bash
-npm run validate:jsx
-```
-
-Parses every `.jsx` file under `src/` with Babel.
-
-## Generate the ARC-Node blueprint document
-
-```bash
-npm run generate
-```
-
-Writes `public/ARC_Node_v2_Technical_Blueprint.docx`, which ships as a static asset and is linked directly
-from the ARC-Node page — no API round-trip.
-
-## Deploying to Cloudflare
-
-This repo deploys as a Cloudflare Worker with static assets (`wrangler.jsonc`), not classic Pages:
-
-1. Connect this GitHub repo as a Worker project in the Cloudflare dashboard, with the deploy command
-   `npx wrangler deploy`. `wrangler.jsonc`'s `build.command` runs `npm run build` automatically before
-   every deploy, so no separate build-command setting is needed.
-2. To send real contact-form emails, set these as Worker secrets/vars (dashboard → Settings → Variables):
-   - `RESEND_API_KEY` — a [Resend](https://resend.com) API key
-   - `CONTACT_TO_EMAIL` — where submissions should be sent
-   - `CONTACT_FROM_EMAIL` — optional; defaults to Resend's sandbox sender
-   Without these, submissions are still validated and logged (visible via `wrangler tail` or the dashboard),
-   just not emailed.
-3. `VITE_API_BASE` is not needed in production — the frontend calls `/api/*` on the same origin the Worker
-   serves. Only set it if you split the API onto a different domain.
-
-You can also deploy manually with `npm run deploy` (runs the build, then `wrangler deploy`) once you're
-logged in via `npx wrangler login`.
+- Strict Content Security Policy (scripts from self only), HSTS, `X-Frame-Options: DENY`, `nosniff`,
+  a locked-down Permissions Policy and `Cross-Origin-Opener-Policy`, on both Worker and asset responses.
+- No secrets in the repo; `.env` is git-ignored.
