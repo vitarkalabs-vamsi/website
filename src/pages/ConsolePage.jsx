@@ -1,30 +1,35 @@
 import FabricConsole from '../components/FabricConsole';
 
 const tries = [
-  { t: 'Connect a chip', d: 'Turn on the QPU or OPU and watch it join the fabric.' },
-  { t: 'Let auto choose', d: 'With auto on, pick route optimisation. The router sends it to the quantum unit.' },
-  { t: 'Switch mid-run', d: 'While a job runs, press 1 to 4. It pauses, moves and resumes without losing progress.' },
-  { t: 'Pull the plug', d: 'Disconnect the chip a job is running on. Fabric moves the job to the next best chip.' },
+  { t: 'See a rejection', d: 'In “Compare inference backends”, hover NPU. It’s rejected with the reason: the model needs 70 GB.' },
+  { t: 'Approve a trade-off', d: 'Pick GPU·B for the benchmark. It fits only with 8-bit weights, so the plan asks you to approve before running.' },
+  { t: 'Switch mid-run', d: 'Connect GPU·B, start the run, then pick it during the benchmark. Requests re-route without repeating work.' },
+  { t: 'Meet a hard limit', d: 'Try connecting the live MEA rig. It stays locked: live biology needs a lab partner and approvals.' },
 ];
 
 export default function ConsolePage() {
   return (
-    <section className="wrap" style={{ paddingTop: 56, paddingBottom: 96 }}>
-      <div className="hero-foot" style={{ marginTop: 0, marginBottom: 32 }}>
-        <h1 className="display" style={{ fontSize: 'clamp(34px, 5vw, 60px)' }}>Fabric console</h1>
-        <p className="body" style={{ maxWidth: '30em' }}>
-          A working model of the runtime. The chips are simulated in your browser; the routing, pause and handoff flow is the real design.
+    <section className="wrap" style={{ paddingTop: 64, paddingBottom: 32 }}>
+      <div className="section-head" style={{ marginBottom: 40 }}>
+        <div>
+          <div className="kicker">प्रयोग <span>the experiment</span></div>
+          <h1 className="display" style={{ fontSize: 'clamp(40px, 5.6vw, 76px)' }}>The workbench</h1>
+        </div>
+        <p className="body">
+          A working model of Fabric’s planner and runtime. Providers and prices are placeholders, but the rules are the real design:
+          explained compatibility, honest cost, approval gates and a record for every run.
         </p>
       </div>
       <FabricConsole />
-      <div className="limits" style={{ marginTop: 48 }}>
-        {tries.map((t) => (
-          <div key={t.t}>
+      <div className="limits" style={{ marginTop: 40 }}>
+        {tries.slice(0, 3).map((t) => (
+          <div key={t.t} className="glass">
             <h2 className="h3">{t.t}</h2>
-            <p className="body" style={{ marginTop: 6 }}>{t.d}</p>
+            <p className="body">{t.d}</p>
           </div>
         ))}
       </div>
+      <p className="small" style={{ marginTop: 20 }}>{tries[3].t}: {tries[3].d}</p>
     </section>
   );
 }

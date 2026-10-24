@@ -1,215 +1,194 @@
 import { useEffect, useRef, useState } from 'react';
-import { Play, Square } from 'lucide-react';
-import { BACKENDS, BACKEND_IDS, WORKLOADS, bestBackend, formatEnergy, useFabric } from '../lib/fabric';
+import { Play, Square, Lock } from 'lucide-react';
+import {
+  BACKENDS, BACKEND_IDS, FAMILIES, VERDICTS, WORKFLOWS,
+  candidates, formatINR, useFabric, verdict,
+} from '../lib/fabric';
 
-function Meter({ data, color }) {
-  const w = 120, h = 30;
-  const pts = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - (v / 100) * (h - 2) - 1}`).join(' ');
+const MODE_NOTE = {
+  route: 'Can switch mid-run: next requests are routed to the new endpoint',
+  checkpoint: 'Can switch mid-run: restarts from the last compatible checkpoint',
+  rerun: 'Can switch between shot batches: results are tagged per backend',
+  fixed: 'Runs where it starts',
+};
+
+function Registry({ backends, onToggle }) {
+  const groups = ['local', 'accel', 'quantum', 'bio'];
   return (
-    <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden="true">
-      <line x1="0" y1={h - 1} x2={w} y2={h - 1} stroke="var(--line-soft)" vectorEffect="non-scaling-stroke" />
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.75" vectorEffect="non-scaling-stroke" />
-    </svg>
-  );
-}
-
-function Module({ id, state, live, selected, onPower, onSelect }) {
-  const spec = BACKENDS[id];
-  const vital = spec.vital.idle + (spec.vital.busy - spec.vital.idle) * (state.util / 100);
-  const online = state.status === 'online';
-  return (
-    <div className={`module ${live ? 'live' : ''} ${state.status === 'offline' ? 'off' : ''}`} style={{ '--c': spec.color }}>
-      <div className="mod-head">
-        <div>
-          <div className="mod-name">{spec.short}</div>
-          <div className="mod-full">{spec.name}</div>
+    <div className="reg">
+      {groups.map((g) => (
+        <div key={g} className="reg-group">
+          <div className="reg-head" style={{ color: FAMILIES[g].color }}>{FAMILIES[g].name}</div>
+          {BACKEND_IDS.filter((id) => BACKENDS[id].family === g).map((id) => {
+            const b = BACKENDS[id];
+            const s = backends[id];
+            return (
+              <div key={id} className={`reg-row ${s.status}`} style={{ '--c': b.color }}>
+                <span className={`led ${s.status === 'online' ? 'on' : s.status === 'connecting' ? 'wait' : ''}`} />
+                <div className="reg-text">
+                  <b>{b.name}</b>
+                  <span>{b.provider}</span>
+                  <span className="reg-meta">{b.integration} · {b.unit}</span>
+                </div>
+                {b.locked ? (
+                  <button className="icon-btn reg-lock" onClick={() => onToggle(id)} aria-label={`${b.name}: not available`} title={b.locked}><Lock size={15} /></button>
+                ) : (
+                  <label className="power" title={s.status === 'online' ? 'Disconnect' : 'Connect'}>
+                    <input type="checkbox" checked={s.status !== 'offline'} disabled={s.status === 'connecting'} onChange={() => onToggle(id)} aria-label={`Connect ${b.name}`} />
+                    <span className="track" />
+                  </label>
+                )}
+              </div>
+            );
+          })}
         </div>
-        <span className={`led ${online ? 'on' : state.status === 'connecting' ? 'wait' : ''}`} aria-hidden="true" />
-      </div>
-
-      <label className="power">
-        <input
-          type="checkbox"
-          checked={online || state.status === 'connecting'}
-          disabled={state.status === 'connecting'}
-          onChange={() => onPower(id)}
-        />
-        <span className="track" />
-        {state.status === 'connecting' ? 'Connecting…' : online ? 'Connected' : 'Disconnected'}
-      </label>
-
-      <div className="mod-meter">
-        <Meter data={state.history} color={state.status === 'offline' ? 'var(--line)' : spec.color} />
-        <div className="mod-read" style={{ marginTop: 6 }}>
-          <span>Load <b>{state.status === 'offline' ? '–' : `${state.util.toFixed(0)}%`}</b></span>
-          <span>{spec.vital.label} <b>{state.status === 'offline' ? '–' : `${vital.toFixed(0)} ${spec.vital.unit}`}</b></span>
-        </div>
-      </div>
-
-      <button
-        className="select-btn"
-        role="radio"
-        aria-checked={selected}
-        disabled={!online}
-        onClick={() => onSelect(id)}
-        title={online ? spec.bestFor : `Connect the ${spec.short} first`}
-      >
-        {live ? 'Running here' : selected ? 'Selected' : 'Run here'} <span className="kbd">{spec.key}</span>
-      </button>
+      ))}
     </div>
   );
 }
 
-function Snippet({ workload, target }) {
+function Step({ i, step, chosen, runStep, live, backends, onChoose, inspect, setInspect }) {
+  const shown = inspect ?? chosen;
+  const [v, why] = shown ? verdict(step, shown) : ['no', 'No connected backend can run this step.'];
   return (
-    <pre className="code">
-      <span className="k">import</span> {'{ fabric }'} <span className="k">from</span> <span className="s">'@vitarka/fabric'</span>{'\n\n'}
-      <span className="k">const</span> job = fabric.run(<span className="s">'{workload.fn}'</span>, input, {'{'} target: <span className="s">'{target}'</span> {'}'}){'\n\n'}
-      <span className="c">// move it mid-run; progress carries over</span>{'\n'}
-      <span className="k">await</span> job.migrate(<span className="s">'qpu'</span>){'\n'}
-      <span className="k">const</span> result = <span className="k">await</span> job.done
-    </pre>
+    <li className={`step ${runStep?.state || ''} ${live ? 'live' : ''}`}>
+      <div className="step-top">
+        <span className="step-i">{runStep?.state === 'done' ? '✓' : i + 1}</span>
+        <div className="step-title">
+          <b>{step.label}</b>
+          <span>{MODE_NOTE[step.mode]}</span>
+        </div>
+        <span className="step-pct">{runStep ? `${Math.round(runStep.progress * 100)}%` : ''}</span>
+      </div>
+
+      <div className="opts" role="radiogroup" aria-label={`Backend for ${step.label}`}>
+        {candidates(step).map((id) => {
+          const [cv] = verdict(step, id);
+          const usable = ['ok', 'warn'].includes(cv) && backends[id].status === 'online' && !BACKENDS[id].locked;
+          return (
+            <button
+              key={id}
+              role="radio"
+              aria-checked={chosen === id}
+              className={`opt v-${cv} ${chosen === id ? 'on' : ''} ${usable ? '' : 'dim'}`}
+              style={{ '--c': BACKENDS[id].color, '--v': VERDICTS[cv].color }}
+              onMouseEnter={() => setInspect(id)}
+              onMouseLeave={() => setInspect(null)}
+              onFocus={() => setInspect(id)}
+              onBlur={() => setInspect(null)}
+              onClick={() => onChoose(i, id)}
+            >
+              <i aria-hidden="true">{VERDICTS[cv].mark}</i>{BACKENDS[id].short}
+              {backends[id].status !== 'online' && !BACKENDS[id].locked && <small>offline</small>}
+            </button>
+          );
+        })}
+      </div>
+      <p className="why" style={{ '--v': VERDICTS[v].color }}>
+        <b>{VERDICTS[v].label}{shown ? ` on ${BACKENDS[shown].short}` : ''}.</b> {why}
+      </p>
+
+      {runStep && (
+        <div className="strip" aria-hidden="true">
+          {runStep.segments.map((s, k) => (
+            <div key={k} className={`strip-fill ${live && k === runStep.segments.length - 1 && runStep.migrating ? 'moving' : ''}`}
+              style={{ '--c': BACKENDS[s.backend].color, left: `${s.from * 100}%`, width: `${(s.to - s.from) * 100}%` }} />
+          ))}
+        </div>
+      )}
+    </li>
   );
 }
 
 export default function FabricConsole() {
-  const { backends, target, setTarget, workloadId, setWorkloadId, job, run, cancel, toggleBackend, log, switches } = useFabric();
-  const workload = WORKLOADS.find((w) => w.id === workloadId);
-  const running = job && !job.done;
-  const rootRef = useRef(null);
+  const f = useFabric();
+  const { backends, workflow, workflowId, setWorkflowId, resolved, estimates, needsQuote, warnings, needsApproval, blockedStep, approved, setApproved, run, start, cancel, choose, toggleBackend, log } = f;
+  const [inspect, setInspect] = useState({});
   const logRef = useRef(null);
-  const [visible, setVisible] = useState(false);
+  const running = run && !run.done;
 
-  useEffect(() => {
-    const el = logRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [log]);
+  useEffect(() => { if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight; }, [log]);
 
-  useEffect(() => {
-    const io = new IntersectionObserver(([e]) => setVisible(e.isIntersecting), { threshold: 0.2 });
-    if (rootRef.current) io.observe(rootRef.current);
-    return () => io.disconnect();
-  }, []);
-
-  // 1–4 pick a chip, A = auto, R = run or cancel. Only while the panel is on screen.
-  useEffect(() => {
-    if (!visible) return undefined;
-    const onKey = (e) => {
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
-      const k = e.key.toLowerCase();
-      const id = BACKEND_IDS.find((b) => BACKENDS[b].key === k);
-      if (id) setTarget(id);
-      else if (k === 'a') setTarget('auto');
-      else if (k === 'r') (running ? cancel : run)();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [visible, running, setTarget, run, cancel]);
-
-  const autoPick = bestBackend(workload, backends);
-  const liveOn = running && !job.migrating ? job.backend : null;
-  const lastSwitch = switches[switches.length - 1];
-
-  let statusLine = 'Pick a workload and press Run.';
-  if (job?.migrating) statusLine = `Moving from ${BACKENDS[job.migrating.from].short} to ${BACKENDS[job.migrating.to].short}…`;
-  else if (running) statusLine = `Running on the ${BACKENDS[job.backend].name}`;
-  else if (job?.done) statusLine = `Finished in ${job.elapsed.toFixed(1)} s`;
+  const known = estimates.filter((e) => typeof e === 'number').reduce((a, b) => a + b, 0);
+  const actual = run ? run.steps.reduce((a, s) => (s.cost == null ? a : a + s.cost), 0) : 0;
+  const actualUnknown = run ? run.steps.some((s) => s.cost === null) : false;
 
   return (
-    <div className="rack-shell" ref={rootRef}>
+    <div className="wb glass">
       <div className="rack-bar">
         <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span className="screw" /> <strong>Fabric console</strong> <span>simulated in your browser</span>
+          <span className="screw" /> <strong>Fabric workbench</strong>
         </span>
-        <span className="keys-hint" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span>Keys: <span className="kbd">1</span> to <span className="kbd">4</span> pick a chip, <span className="kbd">A</span> auto, <span className="kbd">R</span> run</span>
-          <span className="screw" />
-        </span>
+        <span>Simulation. Providers, prices and results are illustrative.</span>
       </div>
 
-      <div className="rack" role="radiogroup" aria-label="Where the job runs">
-        {BACKEND_IDS.map((id) => (
-          <Module
-            key={id}
-            id={id}
-            state={backends[id]}
-            live={liveOn === id}
-            selected={target === id}
-            onPower={toggleBackend}
-            onSelect={setTarget}
-          />
-        ))}
-        <div className={`module ${target === 'auto' && liveOn ? 'live' : ''}`} style={{ '--c': 'var(--ink)' }}>
-          <div className="mod-head">
-            <div>
-              <div className="mod-name">Auto</div>
-              <div className="mod-full">Best connected chip</div>
+      <div className="wb-grid">
+        <aside className="wb-side">
+          <div className="small wb-label">Compute registry</div>
+          <Registry backends={backends} onToggle={toggleBackend} />
+        </aside>
+
+        <div className="wb-main">
+          <div className="wf-tabs" role="tablist" aria-label="Workflow">
+            {WORKFLOWS.map((w) => (
+              <button key={w.id} role="tab" aria-selected={workflowId === w.id} className="wf-tab" disabled={running && workflowId !== w.id} onClick={() => setWorkflowId(w.id)}>
+                {w.label}
+              </button>
+            ))}
+          </div>
+          <p className="body wf-summary">{workflow.summary}</p>
+
+          <ol className="steps-run">
+            {workflow.steps.map((s, i) => (
+              <Step
+                key={`${workflowId}-${i}`}
+                i={i}
+                step={s}
+                chosen={run ? run.steps[i].backend : resolved[i]}
+                runStep={run && !run.cancelled ? { ...run.steps[i], migrating: run.migrating?.step === i } : null}
+                live={running && run.stepIndex === i}
+                backends={backends}
+                onChoose={choose}
+                inspect={inspect[i] ?? null}
+                setInspect={(id) => setInspect((p) => ({ ...p, [i]: id }))}
+              />
+            ))}
+          </ol>
+
+          <div className="plan">
+            <div className="plan-figs">
+              <div>
+                <span className="small">{run ? 'Charged so far' : 'Estimate'}</span>
+                <b>{run ? `${formatINR(actual)}${actualUnknown ? ' + quote' : ''}` : `${formatINR(known)}${needsQuote ? ' + quote' : ''}`}</b>
+              </div>
+              <div>
+                <span className="small">Warnings</span>
+                <b>{warnings}</b>
+              </div>
+              <div>
+                <span className="small">Time</span>
+                <b>{run ? `${run.elapsed.toFixed(1)} s` : '–'}</b>
+              </div>
+            </div>
+            <div className="plan-act">
+              {!running && needsApproval && blockedStep < 0 && (
+                <label className="approve">
+                  <input type="checkbox" checked={approved} onChange={(e) => setApproved(e.target.checked)} />
+                  <span>{needsQuote ? 'I accept that some prices need a provider quote' : 'I reviewed the warnings above'}</span>
+                </label>
+              )}
+              {running
+                ? <button className="btn btn-ghost" onClick={cancel}><Square size={15} /> Cancel run</button>
+                : <button className="btn btn-ember" onClick={start} disabled={blockedStep >= 0 || (needsApproval && !approved)}><Play size={15} /> {run ? 'Run again' : 'Run workflow'}</button>}
             </div>
           </div>
-          <p className="small" style={{ color: 'var(--ink-2)' }}>
-            {autoPick
-              ? <>For {workload.label.toLowerCase()}, the router picks the <b style={{ color: BACKENDS[autoPick].color }}>{BACKENDS[autoPick].short}</b>.</>
-              : 'Connect a chip to route work.'}
-          </p>
-          <p className="small">If a chip disconnects mid-job, work moves to the next best one.</p>
-          <button className="select-btn" role="radio" aria-checked={target === 'auto'} onClick={() => setTarget('auto')}>
-            {target === 'auto' ? 'Auto on' : 'Use auto'} <span className="kbd">A</span>
-          </button>
-        </div>
-      </div>
-
-      <div className="job-row">
-        <label className="field">
-          Workload
-          <select value={workloadId} onChange={(e) => setWorkloadId(e.target.value)} disabled={running}>
-            {WORKLOADS.map((w) => <option key={w.id} value={w.id}>{w.label}</option>)}
-          </select>
-        </label>
-        {running
-          ? <button className="btn btn-line" onClick={cancel}><Square size={15} /> Cancel job</button>
-          : <button className="btn" onClick={run}><Play size={15} /> {job?.done ? 'Run again' : 'Run job'}</button>}
-      </div>
-
-      <div style={{ padding: 20, borderBottom: '1px solid var(--line)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 10, fontSize: 'var(--t-sm)' }}>
-          <span aria-live="polite">{statusLine}</span>
-          <b>{job ? `${(job.progress * 100).toFixed(0)}%` : ''}</b>
-        </div>
-        <div className="strip" role="progressbar" aria-label="Job progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={job ? Math.round(job.progress * 100) : 0}>
-          {job?.segments.map((s, i) => {
-            const last = i === job.segments.length - 1;
-            const moving = last && job.migrating;
-            return (
-              <div
-                key={i}
-                className={`strip-fill ${moving ? 'moving' : ''}`}
-                style={{ '--c': BACKENDS[s.backend].color, left: `${s.from * 100}%`, width: `${Math.max(moving ? 2 : 0, (s.to - s.from) * 100)}%` }}
-              />
-            );
-          })}
-        </div>
-        <div className="legend">
-          {job
-            ? [...new Set(job.segments.map((s) => s.backend))].map((b) => (
-              <span key={b} style={{ '--c': BACKENDS[b].color }}>
-                <i />{BACKENDS[b].short} did {Math.round(job.segments.filter((s) => s.backend === b).reduce((a, s) => a + s.to - s.from, 0) * 100)}%
-              </span>
-            ))
-            : <span className="small">Each colour shows which chip did that part of the job.</span>}
-        </div>
-        <div className="readouts">
-          <div className="readout"><span>Time</span><b>{job ? `${job.elapsed.toFixed(1)} s` : '–'}</b></div>
-          <div className="readout"><span>Energy</span><b>{job ? formatEnergy(job.energy) : '–'}</b></div>
-          <div className="readout"><span>Switches this job</span><b>{job ? job.segments.length - 1 : '–'}</b></div>
-          <div className="readout"><span>Last handoff</span><b>{lastSwitch ? `${lastSwitch.ms} ms` : '–'}</b></div>
         </div>
       </div>
 
       <div className="deck">
         <div>
-          <div className="small" style={{ marginBottom: 8 }}>Event log</div>
-          <div className="log" ref={logRef}>
+          <div className="small wb-label">Run log</div>
+          <div className="log" ref={logRef} aria-live="polite">
             {log.map((l, i) => (
               <div key={i} className={l.level}>
                 <span className="t">{l.t}</span>
@@ -220,8 +199,27 @@ export default function FabricConsole() {
           </div>
         </div>
         <div>
-          <div className="small" style={{ marginBottom: 8 }}>The same job in code (SDK preview)</div>
-          <Snippet workload={workload} target={target} />
+          <div className="small wb-label">Provenance record</div>
+          <pre className="code prov">
+            {run ? (
+              <>
+                <span className="c">{'# written for every run'}</span>{'\n'}
+                run_id: <span className="s">{run.id}</span>{'\n'}
+                workflow: <span className="s">{run.workflow}@v1</span>{'\n'}
+                input_sha256: <span className="s">{run.input}…</span>{'\n'}
+                status: <span className="s">{run.cancelled ? 'cancelled' : run.done ? 'succeeded' : 'running'}</span>{'\n'}
+                nodes:{'\n'}
+                {workflow.steps.map((s, i) => {
+                  const st = run.steps[i];
+                  const out = run.outputs.find((o) => o.step === i);
+                  const used = [...new Set(st.segments.map((x) => BACKENDS[x.backend].short))].join(', ') || BACKENDS[st.backend].short;
+                  return `  - ${s.label}\n    backend: ${used}\n    switches: ${st.switches}\n    cost: ${st.state === 'queued' ? '–' : formatINR(st.cost)}\n    output: ${out ? out.sha + '…' : st.state}\n`;
+                }).join('')}
+              </>
+            ) : (
+              <span className="c">{'# Run the workflow to see its record:\n# inputs and checksums, backend per step,\n# switches, cost, and output artifacts.'}</span>
+            )}
+          </pre>
         </div>
       </div>
     </div>

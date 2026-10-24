@@ -1,7 +1,7 @@
 # Vitarka Fabric website
 
-Marketing site and interactive console for **Vitarka Fabric**, one runtime that connects NPUs, TPUs,
-quantum processors (QPUs) and organoid processors (OPUs), and lets a running job switch between them.
+Website for **Vitarka Fabric**, an open research compute layer (validation stage) for AI accelerators,
+quantum systems and organoid/MEA neuroscience workflows, with explained compatibility, honest cost and provenance.
 
 Live: https://website.vitarkalabs.workers.dev
 
@@ -12,7 +12,7 @@ React + Vite frontend, served together with a small API by a single Cloudflare W
 | Path | What it is |
 |------|------------|
 | `src/pages/HomePage.jsx` | Landing page: hero, live console, chip datasheet, call to action |
-| `src/pages/ConsolePage.jsx` | Full-page console with things to try |
+| `src/pages/ConsolePage.jsx` | Full-page workbench with things to try |
 | `src/pages/PlatformPage.jsx` | Architecture, live-handoff steps, routing weights, limits |
 | `src/components/FabricConsole.jsx` | The rack-style console UI |
 | `src/lib/fabric.js` | Client-side simulation of the runtime: chips, workloads, routing, checkpoint and handoff |
